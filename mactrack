@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+# mactrack: track & monitor MAC addresses on your LAN.
+# https://github.com/curtis86/mactrack
+# Author: Curtis K <curtis@linux.com>
+
+set -u
+
+# Vars/dirs:
+readonly home_dir="$( cd "$( dirname $0 )" && pwd )"
+readonly includes_dir="${home_dir}/includes"
+readonly state_dir="${home_dir}/.state"
+
+# Vars/files:
+readonly lock_file="${home_dir}/.lock"
+readonly network_file="${state_dir}/network"
+readonly last_scan_file="${state_dir}/last_scan"
+
+# Vars/other:
+readonly dependencies=( nmap ipcalc )
+readonly run_timeout=120
+readonly progname="$( basename $0 )"
+
+# Includes:
+. "${includes_dir}/functions.sh"
+
+main() {
+
+  check_lock && lock
+
+  export NUMARGS=$#
+  export FIRSTRUN=1
+
+  mm::user_check
+  mm::setup
+  check_dependencies
+
+  # Exit if no args
+  [ ${NUMARGS} -eq 0 ] && mm::usage && mm::exit 1
+
+  set +u
+  
+  # Parse options... the old way
+  while [ $# -ge 1 ]; do
+    _opt="$1" ; shift
+    case "${_opt}" in
+      --network) mm::add_network "$1" && shift                     ;;
+      --scan) mm::set_network ; mm::scan_network ; mm::add_address ;;
+      --tag) mm::set_network ; mm::add_tag "$1" && shift           ;;
+      --delete) mm::set_network ; mm::delete_address "$1" && shift ;;
+      --list) mm::set_network ; mm::list                           ;;
+      *) echo "Unknown option ${_opt}!"s && mm::usage              ;;
+    esac
+  done
+  
+  unlock
+  
+}; main $@
