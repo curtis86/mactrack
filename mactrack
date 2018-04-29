@@ -15,11 +15,14 @@ readonly state_dir="${home_dir}/.state"
 readonly lock_file="${home_dir}/.lock"
 readonly network_file="${state_dir}/network"
 readonly last_scan_file="${state_dir}/last_scan"
+readonly log_file="${home_dir}/activity.log"
 
 # Vars/other:
 readonly dependencies=( nmap ipcalc )
 readonly run_timeout=120
 readonly progname="$( basename $0 )"
+readonly return_notify_interval=1800
+
 
 # Includes:
 . "${includes_dir}/functions.sh"

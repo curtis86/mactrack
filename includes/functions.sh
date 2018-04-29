@@ -54,6 +54,12 @@ check_lock() {
   fi
 }
 
+# Logs to file
+mm::log() {
+  _log_msg="$( date ) - $@"
+  set -u && echo "${_log_msg}" >> "${log_file}"
+}
+
 # Echo/error
 ee() {
   echo "ERROR: $@" >&2
@@ -73,6 +79,7 @@ de() {
 mm::setup() {
   [ ! -d "${state_dir}" ] && mkdir "${state_dir}" && FIRSTRUN=0
   [ ! -f "${network_file}" ] && touch "${network_file}"
+  [ ! -f "${log_file}" ] && touch "${log_file}"
 }
 
 # Checks dependencies
@@ -179,7 +186,7 @@ mm::new_mac_address_notification() {
 
 # Adds or updates address state
 mm::add_address() {
-  local _address _vendor _this_address_directory _date_updated _date_discovered _friendly_name _this_vendor_file _this_last_seen_file _this_first_discovered_file _date_now _this_tags_file _new_discovered _new_discovered_index
+  local _address _vendor _this_address_directory _date_updated _date_discovered _friendly_name _this_vendor_file _this_last_seen_file _this_first_discovered_file _date_now _this_tags_file _new_discovered _new_discovered_index _this_last_seen _time_away
 
   _new_discovered_index=0
   declare -a _new_discovered
@@ -197,6 +204,9 @@ mm::add_address() {
 
     if [ -d "${_this_address_directory}" ]; then
       touch "${_this_last_seen_file}"
+      _this_last_seen=$( cat "${_this_last_seen_file}" )
+      _time_away=$(( _date_now - _this_last_seen ))
+      [ ${_time_away} -ge ${return_notify_interval} ] && mm::log "Address ${_address} returned after being away for ${_time_away} seconds."
       set -u && echo "${_date_now}" > "${_this_last_seen_file}"
     else
       set -u && mkdir -p "${_this_address_directory}"
@@ -204,8 +214,11 @@ mm::add_address() {
       set -u && echo "${_vendor}" > "${_this_vendor_file}"
       set -u && echo "${_date_now}" > "${_this_last_seen_file}"
       set -u && echo "${_date_now}" > "${_this_first_discovered_file}"
+
       _new_discovered[${_new_discovered_index}]="${_address},${_vendor}"
       ((_new_discovered_index++))
+
+      mm::log "New MAC address discovered: ${_address} (${_vendor})"
     fi
   done
 
