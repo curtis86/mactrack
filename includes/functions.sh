@@ -186,12 +186,14 @@ mm::new_mac_address_notification() {
 
 # Adds or updates address state
 mm::add_address() {
-  local _address _vendor _this_address_directory _date_updated _date_discovered _friendly_name _this_vendor_file _this_last_seen_file _this_first_discovered_file _date_now _this_tags_file _new_discovered _new_discovered_index _this_last_seen _time_away
+  local _address _vendor _this_address_directory _date_updated _date_discovered _friendly_name _this_vendor_file _this_last_seen_file _this_first_discovered_file _date_now _this_tags_file _new_discovered _new_discovered_index _this_last_seen_seconds _time_away _this_tags
 
   _new_discovered_index=0
   declare -a _new_discovered
 
-  for _mac_address_entry in "${mac_address_data[@]}" ; do
+  [ -f "${last_scan_file}" ] && _last_scan=$( cat "${last_scan_file}" ) ; [ ! -f "${last_scan_file}" ] && _last_scan=0
+
+   for _mac_address_entry in "${mac_address_data[@]}" ; do
     _address="$( echo "${_mac_address_entry}" | awk '{ print $1 }' )"
     _vendor="$( echo "${_mac_address_entry}" | sed "s/${_address}//g" | sed 's/ (//g' | sed 's/)//g' )"
     _friendly_name="$( echo "${_address}" | sed 's/:/_/g' )"
@@ -204,9 +206,10 @@ mm::add_address() {
 
     if [ -d "${_this_address_directory}" ]; then
       touch "${_this_last_seen_file}"
-      _this_last_seen=$( cat "${_this_last_seen_file}" )
-      _time_away=$(( _date_now - _this_last_seen ))
-      [ ${_time_away} -ge ${return_notify_interval} ] && mm::log "Address ${_address} returned after being away for ${_time_away} seconds."
+      _this_last_seen_seconds="$( cat "${_this_last_seen_file}" )"
+      _time_away=$(( _last_scan - _this_last_seen_seconds ))
+      _this_tags=$( cat "${_this_tags_file}" ) ; [ -z "${_this_tags}" ] && _this_tags="None"
+      [ ${_time_away} -ge ${return_notify_interval} ] && mm::log "Address ${_address} (${_this_tags}) returned after being away for ${_time_away} seconds."
       set -u && echo "${_date_now}" > "${_this_last_seen_file}"
     else
       set -u && mkdir -p "${_this_address_directory}"
